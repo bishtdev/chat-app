@@ -11,6 +11,7 @@ export default function ChatWindow({ currentUser, selectedUser }) {
   const [typing, setTyping] = useState(false)
   const scrollRef = useRef();
   const socketRef = useRef();
+  const fileInputRef = useRef(null)
 
   // Initialize Socket.IO (once)
   useEffect(() => {
@@ -92,14 +93,41 @@ export default function ChatWindow({ currentUser, selectedUser }) {
     }
   };
 
-    //for typing... functionality
-    const handleInputChange =  (e) =>{
-      setInput(e.target.value);
-      socketRef.current.emit("typing",{
-        senderId:currentUser.id || currentUser._id,
-        receiverId: selectedUser._id
-      })
+  const handleFileChange = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file || !selectedUser) return;
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (input && input.trim()) {
+        formData.append("message", input.trim());
+      }
+      formData.append("receiverId", selectedUser._id);
+
+      const res = await API.post("/messages/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setMessages((prev) => [...prev, res.data]);
+      setInput("");
+      e.target.value = "";
+    } catch (err) {
+      console.error("Error uploading attachment:", err);
     }
+  };
+
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click();
+  };
+
+  //for typing... functionality
+  const handleInputChange =  (e) =>{
+    setInput(e.target.value);
+    socketRef.current.emit("typing",{
+      senderId:currentUser.id || currentUser._id,
+      receiverId: selectedUser._id
+    })
+  }
   
 
   if (!selectedUser) {
@@ -159,7 +187,16 @@ export default function ChatWindow({ currentUser, selectedUser }) {
           }`}
           style={{ animationDelay: `${idx * 0.05}s` }}
         >
-          <p className="text-sm">{msg.message}</p>
+          {msg.attachmentUrl ? (
+            msg.attachmentType && msg.attachmentType.startsWith("image/") ? (
+              <img src={msg.attachmentUrl} alt={msg.attachmentName || "image"} className="max-w-full rounded-lg mb-2" />
+            ) : (
+              <a href={msg.attachmentUrl} target="_blank" rel="noreferrer" className={`${isSender ? "text-blue-100" : "text-blue-600"} underline text-sm`}>
+                {msg.attachmentName || "Download attachment"}
+              </a>
+            )
+          ) : null}
+          {msg.message && <p className="text-sm">{msg.message}</p>}
           <div
             className={`text-xs mt-1 ${
               isSender ? "text-blue-100" : "text-gray-400"
@@ -180,7 +217,6 @@ export default function ChatWindow({ currentUser, selectedUser }) {
   <div ref={scrollRef} />
 </div>  
 
-
       {/* Input */}
       <div className="p-4 border-t border-gray-200 bg-white/80 backdrop-blur-sm">
         <div className="flex gap-2">
@@ -192,8 +228,15 @@ export default function ChatWindow({ currentUser, selectedUser }) {
               placeholder="Type a message..."
               className="w-full p-3 pl-4 pr-12 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
             />
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileChange}
+              className="hidden"
+              accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,video/mp4"
+            />
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex gap-1">
-              <button className="p-1 text-gray-500 hover:text-gray-700 transition-colors">
+              <button className="p-1 text-gray-500 hover:text-gray-700 transition-colors" onClick={triggerFileSelect}>
                 <IoIosAttach className="h-5 w-5" />
               </button>
               <button className="p-1 text-gray-500 hover:text-gray-700 transition-colors">

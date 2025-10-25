@@ -75,3 +75,47 @@ exports.getMessages = async (req, res) => {
     res.status(500).json({ message: 'Error retrieving messages', error: error.message });
   }
 };
+
+exports.uploadAttachment = async (req, res) =>{
+  try{
+    const senderId = req.user.id;
+    const {receiverId, message} = req.body;
+    if(!receiverId){
+      return res.status(400).json({message:"receiverId is required"})
+    }
+    if(!req.file){
+      return res.status(400).json({message:"Attachment is required"})
+    }
+    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/attachments/${req.file.filename}`;
+
+    const payload = {
+      senderId,
+      receiverId,
+      timestamp:new Date(),
+      attachmentUrl: fileUrl,
+      attachmentType: req.file.mimetype,
+      attachmentName: req.file.originalname,
+      attachmentSize: req.file.size,
+    }
+
+    if(message && message.trim()){
+      payload.message = message.trim();
+    }
+    const newMessage = await Message.create(payload);
+
+    const io = req.app.get("io")
+    const onlineUsers = req.app.get("onlineUsers");
+    if(io && onlineUsers){
+      const toSocketId = onlineUsers.get(receiverId.toString())
+      if(toSocketId){
+        io.to(toSocketId).emit('receive_message', newMessage);
+      }
+    }
+
+    res.status(201).json(newMessage)
+  }
+  catch(error){
+    console.error('Upload attachment error:', error);
+    res.status(500).json({ message: 'Error uploading attachment', error: error.message });
+  }
+}

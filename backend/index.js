@@ -27,6 +27,12 @@ if (!fs.existsSync(avatarsDir)) {
   fs.mkdirSync(avatarsDir, { recursive: true });
 }
 
+// create uploads/attachments folder if not exists
+const attachmentsDir = path.join(__dirname, "uploads", "attachments");
+if (!fs.existsSync(attachmentsDir)) {
+  fs.mkdirSync(attachmentsDir, { recursive: true });
+}
+
 // serve uploads statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
