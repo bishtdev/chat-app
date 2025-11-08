@@ -93,6 +93,14 @@ export default function ChatWindow({ currentUser, selectedUser }) {
     }
   };
 
+  // to send send text after clicking enter
+  const handleKeyDown = (e) =>{
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
   const handleFileChange = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file || !selectedUser) return;
@@ -225,6 +233,7 @@ export default function ChatWindow({ currentUser, selectedUser }) {
               type="text"
               value={input}
               onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               className="w-full p-3 pl-4 pr-12 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
             />
@@ -246,6 +255,7 @@ export default function ChatWindow({ currentUser, selectedUser }) {
           </div>
           <button
             onClick={handleSend}
+            onKeyDown={handleKeyDown}
             disabled={!input.trim()}
             className={`p-3 rounded-full transition-all duration-300 transform hover:scale-105 ${
               input.trim()
